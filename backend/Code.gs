@@ -20,6 +20,22 @@ const TYPES = ['OPENAI_COST', 'ANTHROPIC_COST', 'DEEPSEEK_BALANCE', 'XAI_BALANCE
   'OPENROUTER_CREDITS', 'JSON_URL', 'MANUAL'];
 const NEEDS_KEY = ['OPENAI_COST', 'ANTHROPIC_COST', 'DEEPSEEK_BALANCE', 'XAI_BALANCE', 'KIMI_BALANCE', 'OPENROUTER_CREDITS'];
 
+// ====================== 安裝 ======================
+
+/** 第一次部署前執行一次：建立加密密鑰、安裝每 15 分鐘的背景更新排程。 */
+function setup() {
+  const p = props();
+  if (!p.getProperty('ENC_SECRET')) {
+    p.setProperty('ENC_SECRET', Utilities.base64Encode(randomBytes()));
+  }
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'refreshAllUsers') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('refreshAllUsers').timeBased().everyMinutes(15).create();
+  UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); // 觸發對外連線授權
+  Logger.log('完成：已建立加密密鑰與每 15 分鐘排程。使用者數：' + users().length);
+}
+
 function mr(l, p, r, per) { return { l: l, p: p, r: r, at: 0, per: per }; }
 const EMPTY = mr('', 100, true, 0);
 
@@ -535,20 +551,4 @@ function dec(s) {
   const key = secretBytes();
   if (Utilities.base64Encode(hmac(parts[1] + ':' + parts[2], key).slice(0, 16)) !== parts[3]) throw new Error('BAD_MAC');
   return Utilities.newBlob(xorStream(Utilities.base64Decode(parts[2]), parts[1], key)).getDataAsString();
-}
-
-// ====================== 安裝 ======================
-
-/** 第一次部署前執行一次：建立加密密鑰、安裝每 15 分鐘的背景更新排程。 */
-function setup() {
-  const p = props();
-  if (!p.getProperty('ENC_SECRET')) {
-    p.setProperty('ENC_SECRET', Utilities.base64Encode(randomBytes()));
-  }
-  ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'refreshAllUsers') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('refreshAllUsers').timeBased().everyMinutes(15).create();
-  UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); // 觸發對外連線授權
-  Logger.log('完成：已建立加密密鑰與每 15 分鐘排程。使用者數：' + users().length);
 }
