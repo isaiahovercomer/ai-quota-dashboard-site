@@ -7,13 +7,18 @@
  * 資料（指令碼屬性，只有這個指令碼讀得到）：
  *   c_<sub>  使用者設定（金鑰加密保存）      r_<sub>  最近一次查詢結果
  *   m_<sub>  最後使用時間                    s_<token> 登入通行證（60 天）
- *   p_<code> 連結碼（10 分鐘）               users    使用者清單
+ *   users    使用者清單
+ *
+ * 網頁版、Android、iPhone 都用同一個 Google 帳號登入，看到同一份設定。
  */
 
-const GOOGLE_CLIENT_ID = '377002864625-2ao3us8jdfa1luak4djov1fpdtc6rbt2.apps.googleusercontent.com';
+// 接受的 Google 用戶端：網頁版（Android 也用這個當 serverClientId）、iPhone 版
+const GOOGLE_CLIENT_IDS = [
+  '377002864625-2ao3us8jdfa1luak4djov1fpdtc6rbt2.apps.googleusercontent.com',
+  '377002864625-bdstrhhfmd8ut1vkgvis022hig537kaq.apps.googleusercontent.com',
+];
 const SESSION_DAYS = 60;
 const STALE_DAYS = 30;          // 超過 30 天沒打開，暫停背景更新（省額度）
-const PAIR_MINUTES = 10;
 const DAY = 86400000;
 
 const TYPES = ['OPENAI_COST', 'ANTHROPIC_COST', 'DEEPSEEK_BALANCE', 'XAI_BALANCE', 'KIMI_BALANCE',
@@ -89,7 +94,6 @@ function out(obj) {
 function handle(req) {
   switch (req.action) {
     case 'login': return login(req.idToken);
-    case 'pairRedeem': return pairRedeem(req.code);
   }
   const sub = auth(req.session);
   switch (req.action) {
@@ -97,7 +101,7 @@ function handle(req) {
     case 'save': return saveService(sub, req.service || {});
     case 'toggle': return toggle(sub, req.id, !!req.on);
     case 'refresh': return refreshUser(sub, req.id);
-    case 'pairCreate': return pairCreate(sub);
+    case 'import': return importLocal(sub, req.services || []);
     case 'logout': props().deleteProperty('s_' + req.session); return { ok: true };
     case 'deleteMe': return deleteMe(sub);
   }
@@ -117,7 +121,7 @@ function verifyGoogle(idToken) {
   if (res.getResponseCode() !== 200) throw new Error('INVALID_TOKEN');
   const p = JSON.parse(res.getContentText());
   const issOk = p.iss === 'accounts.google.com' || p.iss === 'https://accounts.google.com';
-  if (p.aud !== GOOGLE_CLIENT_ID || !issOk) throw new Error('INVALID_TOKEN');
+  if (GOOGLE_CLIENT_IDS.indexOf(p.aud) < 0 || !issOk) throw new Error('INVALID_TOKEN');
   if (String(p.email_verified) !== 'true') throw new Error('EMAIL_NOT_VERIFIED');
   if (Number(p.exp) * 1000 < Date.now()) throw new Error('TOKEN_EXPIRED');
   return { sub: String(p.sub), email: String(p.email || '') };
@@ -145,26 +149,6 @@ function auth(session) {
   const m = getJSON('m_' + sub) || {};
   if (!m.seen || Date.now() - m.seen > 3600000) { m.seen = Date.now(); setJSON('m_' + sub, m); }
   return sub;
-}
-
-/** 在已登入的裝置產生連結碼，到另一台裝置（例如主畫面上的 App）輸入即可登入。 */
-function pairCreate(sub) {
-  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const rnd = randomBytes();
-  let code = '';
-  for (let i = 0; i < 8; i++) code += A.charAt((rnd[i] + 128) % A.length);
-  props().setProperty('p_' + code, sub + '|' + (Date.now() + PAIR_MINUTES * 60000));
-  return { ok: true, code: code.slice(0, 4) + '-' + code.slice(4), minutes: PAIR_MINUTES };
-}
-
-function pairRedeem(code) {
-  const c = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const v = c.length === 8 ? props().getProperty('p_' + c) : null;
-  if (!v) throw new Error('PAIR_INVALID');
-  props().deleteProperty('p_' + c);
-  const parts = v.split('|');
-  if (Date.now() > Number(parts[1])) throw new Error('PAIR_INVALID');
-  return Object.assign(issueSession(parts[0]), state(parts[0]));
 }
 
 // ====================== 使用者資料 ======================
@@ -277,13 +261,47 @@ function toggle(sub, id, on) {
   return state(sub);
 }
 
+/**
+ * App 第一次登入時上傳手機上的設定：只補帳號裡「還沒設定過」的服務（跟預設一樣的才會被取代），
+ * 金鑰只在帳號裡還沒有金鑰時才存。帳號裡已經有的設定一律為主，不會被覆蓋。
+ */
+function importLocal(sub, list) {
+  withLock(function () {
+    const cfg = getCfg(sub);
+    const def = catalog();
+    const res = getJSON('r_' + sub) || {};
+    (Array.isArray(list) ? list : []).slice(0, def.length).forEach(function (s) {
+      const id = Number(s && s.id);
+      const slot = cfg.slots[id];
+      if (!slot || TYPES.indexOf(s.t) < 0) return;
+      const untouched = FIELDS.every(function (f) { return JSON.stringify(slot[f]) === JSON.stringify(def[id][f]); });
+      if (untouched) {
+        if (slot.t !== s.t) delete res[id];
+        slot.t = s.t;
+        if (s.n !== undefined) slot.n = String(s.n).trim().slice(0, 30);
+        if (s.a !== undefined) slot.a = String(s.a).trim().slice(0, 100);
+        if (s.b !== undefined) slot.b = Math.max(0, num(s.b));
+        if (s.u !== undefined) slot.u = String(s.u).trim().slice(0, 500);
+        if (s.m1) slot.m1 = cleanRow(s.m1);
+        if (s.m2) slot.m2 = cleanRow(s.m2);
+        if (s.e !== undefined) slot.e = !!s.e;
+      }
+      if (!slot.k && s.key && String(s.key).trim() && slot.t === s.t) slot.k = enc(String(s.key).trim().slice(0, 500));
+      if (slot.t === 'MANUAL') { rollOver(slot.m1); rollOver(slot.m2); res[id] = manualResult(slot); }
+    });
+    setCfg(sub, cfg);
+    setJSON('r_' + sub, res);
+  });
+  return state(sub);
+}
+
 function deleteMe(sub) {
   withLock(function () {
     const p = props();
     ['c_', 'r_', 'm_'].forEach(function (k) { p.deleteProperty(k + sub); });
     const all = p.getProperties();
     Object.keys(all).forEach(function (k) {
-      if ((k.indexOf('s_') === 0 || k.indexOf('p_') === 0) && all[k].split('|')[0] === sub) p.deleteProperty(k);
+      if (k.indexOf('s_') === 0 && all[k].split('|')[0] === sub) p.deleteProperty(k);
     });
     p.setProperty('users', users().filter(function (u) { return u !== sub; }).join(','));
   });
@@ -499,7 +517,7 @@ function refreshAllUsers() {
       setCfg(sub, cfg);
       setJSON('r_' + sub, res);
     });
-    // 清掉過期的通行證與連結碼
+    // 清掉過期的通行證（p_ 是舊版連結碼）
     const all = props().getProperties();
     Object.keys(all).forEach(function (k) {
       if ((k.indexOf('s_') === 0 || k.indexOf('p_') === 0) && now > Number(all[k].split('|')[1])) props().deleteProperty(k);

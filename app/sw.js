@@ -1,5 +1,5 @@
 // 離線快取：頁面本身「網路優先」（確保拿到最新版），圖示等靜態檔快取優先；後端資料一律走網路。
-const CACHE = 'aq-v5';
+const CACHE = 'aq-v6';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => {
