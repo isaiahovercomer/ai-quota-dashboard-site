@@ -1,5 +1,5 @@
 // 離線快取：App 外殼先用快取、背景更新；後端資料（script.google.com）一律走網路。
-const CACHE = 'aq-v1';
+const CACHE = 'aq-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => {
