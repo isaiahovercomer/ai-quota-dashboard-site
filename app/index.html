@@ -102,7 +102,10 @@ a{color:var(--a)}
   <img class="logo" src="icons/icon-192.png" alt="">
   <h1>AI額度即時儀表板</h1>
   <p class="sub" style="font-size:15px;margin:8px 0 26px">把各家 AI 的使用額度、API 花費與餘額集中在一個畫面。登入後，你的設定會在所有裝置同步，伺服器每 15 分鐘自動幫你更新。</p>
-  <div id="gsiBtn" style="min-height:44px"></div>
+  <button id="googleBtn" class="btn" style="background:#fff;color:#1F1F1F;gap:12px" onclick="googleSignIn()">
+    <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+    使用 Google 帳號登入
+  </button>
   <p id="cfgMissing" class="callout hidden">網站尚未完成後端設定（Google 登入用戶端 ID 或後端網址），請稍後再試。</p>
   <div class="or">或用連結碼登入</div>
   <div class="field"><input id="pairInput" placeholder="例如 K7M2-X9PQ" autocomplete="one-time-code" autocapitalize="characters"></div>
@@ -300,22 +303,40 @@ function toast(msg) {
 }
 
 // ===================== 登入 =====================
+const REDIRECT = 'https://isaiahovercomer.github.io/ai-quota-dashboard-site/app/';
 function showLogin() {
   document.getElementById('appView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
-  if (!configured && !DEMO) { document.getElementById('cfgMissing').classList.remove('hidden'); return; }
-  if (DEMO) { document.getElementById('gsiBtn').innerHTML = '<button class="btn primary" onclick="demoLogin()">示範：用 Google 登入</button>'; return; }
-  const init = () => {
-    google.accounts.id.initialize({ client_id: CONFIG.clientId, callback: onGoogle, auto_select: true, itp_support: true, use_fedcm_for_prompt: true });
-    google.accounts.id.renderButton(document.getElementById('gsiBtn'), { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', locale: 'zh-TW', width: 320 });
-    google.accounts.id.prompt();
-  };
-  if (window.google?.accounts) init();
-  else { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = init; document.head.appendChild(s); }
+  if (!configured && !DEMO) { document.getElementById('cfgMissing').classList.remove('hidden'); document.getElementById('googleBtn').disabled = true; }
 }
-async function onGoogle(resp) {
-  try { applyState(await api('login', { idToken: resp.credential })); showApp(); }
-  catch (e) { toast(e.message); }
+const rand = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+/** 整頁導向到 Google 登入（不用彈出視窗，Brave、Safari、主畫面 App 都能用），登入後帶 id_token 回來。 */
+function googleSignIn() {
+  if (DEMO) return demoLogin();
+  const nonce = rand(), state = rand();
+  sessionStorage.setItem('aq_oauth', JSON.stringify({ nonce, state }));
+  localStorage.setItem('aq_oauth', JSON.stringify({ nonce, state })); // 有些瀏覽器回來時會換分頁
+  const q = new URLSearchParams({ client_id: CONFIG.clientId, redirect_uri: REDIRECT, response_type: 'id_token',
+    scope: 'openid email profile', nonce, state, prompt: 'select_account' });
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + q;
+}
+function jwtPayload(t) {
+  try { return JSON.parse(decodeURIComponent(escape(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (_) { return {}; }
+}
+/** Google 登入回來時網址井號後面帶 id_token。回傳 true 表示有處理。 */
+async function handleOAuthReturn() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (!h.get('id_token') && !h.get('error')) return false;
+  history.replaceState(null, '', location.pathname);
+  const saved = JSON.parse(sessionStorage.getItem('aq_oauth') || localStorage.getItem('aq_oauth') || '{}');
+  sessionStorage.removeItem('aq_oauth'); localStorage.removeItem('aq_oauth');
+  showLogin();
+  if (h.get('error')) { toast(h.get('error') === 'access_denied' ? '已取消 Google 登入' : 'Google 登入失敗：' + h.get('error')); return true; }
+  const token = h.get('id_token');
+  if (!saved.state || h.get('state') !== saved.state || jwtPayload(token).nonce !== saved.nonce) { toast('登入驗證不符，請再按一次登入'); return true; }
+  toast('登入中…');
+  try { applyState(await api('login', { idToken: token })); showApp(); } catch (e) { toast(e.message); }
+  return true;
 }
 async function redeemPair() {
   const code = document.getElementById('pairInput').value.trim();
@@ -325,7 +346,6 @@ async function redeemPair() {
 }
 function signOutLocal() {
   session = ''; S = null; localStorage.removeItem('aq_session'); localStorage.removeItem('aq_state');
-  window.google?.accounts?.id?.disableAutoSelect?.();
   showLogin();
 }
 async function logout() { try { await api('logout'); } catch (_) {} signOutLocal(); }
@@ -528,6 +548,7 @@ function demoLogin() { applyState({ ok: true, ...demoState() }); showApp(); }
     const id = p.get('edit'); if (id !== null) openEdit(Number(id));
     return;
   }
+  if (location.hash.includes('id_token=') || location.hash.includes('error=')) return handleOAuthReturn();
   if (!session) return showLogin();
   const cached = localStorage.getItem('aq_state');
   if (cached) { S = JSON.parse(cached); render(); }
