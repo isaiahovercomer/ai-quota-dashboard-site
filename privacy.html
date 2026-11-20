@@ -2,47 +2,48 @@
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI額度即時儀表板｜隱私權政策</title><link rel="stylesheet" href="style.css"></head>
 <body><main>
-<header><img src="icon.png" alt=""><div><h1>隱私權政策</h1><small>AI額度即時儀表板 · 最後更新：2026 年 11 月 20 日（新增網頁版）</small></div></header>
+<header><img src="icon.png" alt=""><div><h1>隱私權政策</h1><small>AI額度即時儀表板 · 最後更新：2026 年 11 月 20 日（App 新增 Google 帳號同步）</small></div></header>
 
 <h2>摘要</h2>
-<p>本服務有兩種版本，資料處理方式不同：</p>
+<p>本服務有網頁版與 Android／iPhone App，資料處理方式依你是否登入 Google 帳號而不同：</p>
 <ul>
-<li><b>Android／iPhone App</b>：不收集任何個人資料，所有資料只存在你的裝置，開發者收不到。</li>
-<li><b>網頁版</b>（用 Google 帳號登入）：為了跨裝置同步並在背景自動更新，會在後端保存你的設定與 API 金鑰（金鑰加密保存），詳見下方「網頁版」。</li>
+<li><b>沒有登入的 App</b>：不收集任何個人資料，所有資料只存在你的裝置，開發者收不到。</li>
+<li><b>用 Google 帳號登入（網頁版，或在 App 裡選擇登入）</b>：為了跨裝置同步並在背景自動更新，會在後端保存你的設定與 API 金鑰（金鑰加密保存），詳見下方「登入 Google 帳號後會保存什麼」。App 登入時，裝置上已有的設定與金鑰會上傳到你的帳號。</li>
 </ul>
-<p>兩種版本都沒有廣告，也沒有使用分析或追蹤工具。</p>
+<p>所有版本都沒有廣告，也沒有使用分析或追蹤工具。</p>
 
-<h2>網頁版會保存什麼</h2>
+<h2>登入 Google 帳號後會保存什麼</h2>
 <ul>
 <li><b>Google 帳號識別碼與電子郵件</b>：登入時由 Google 提供，用來辨識你是誰、讓你的設定在各裝置同步。我們不會取得你的 Google 密碼，也不會存取你的 Gmail、雲端硬碟等其他資料。</li>
 <li><b>你的設定</b>：選擇顯示的服務、名稱、手動輸入的額度數字、Team ID、自訂網址。</li>
 <li><b>你貼上的 API 金鑰</b>：以加密形式保存在後端（Google Apps Script 的指令碼屬性），只用來向你選擇的服務商官方網址查詢你自己帳戶的額度或餘額，畫面上只顯示末 4 碼。</li>
 <li><b>最近一次查詢結果</b>與<b>最後使用時間</b>。</li>
 </ul>
-<p>後端每 15 分鐘會用你的金鑰查詢一次；超過 30 天沒有開啟網頁版，就會暫停查詢。後端由開發者的 Google 帳號執行，資料存放在 Google 的伺服器上。</p>
+<p>後端每 15 分鐘會用你的金鑰查詢一次；超過 30 天沒有開啟網頁版或 App，就會暫停查詢。後端由開發者的 Google 帳號執行，資料存放在 Google 的伺服器上。</p>
 <p><b>刪除</b>：在網頁版「帳號 → 刪除我的資料」可立即刪除你在後端的全部資料（設定、金鑰、查詢結果、登入狀態）。也可以來信要求刪除。</p>
 <p>我們不會出售、出租或分享你的資料給任何第三方，也不會用於查詢額度以外的用途。</p>
 
-<h2>Android／iPhone App 會在你的裝置上保存什麼</h2>
+<h2>App 會在你的裝置上保存什麼</h2>
 <ul>
 <li>你選擇顯示的服務、名稱與手動輸入的額度數字</li>
 <li>你自行貼上的 API 金鑰、Team ID 或自訂網址</li>
 <li>最近一次查詢到的額度結果，用來顯示在小工具上</li>
+<li>登入 Google 帳號時：後端發給這台裝置的登入通行證與你的電子郵件（顯示用）</li>
 </ul>
-<p>以上資料只存在你的裝置（iPhone 存在 App 與小工具共用的 App Group 空間）。解除安裝 App 即會全部刪除。</p>
+<p>以上資料存在你的裝置（iPhone 存在 App 與小工具共用的 App Group 空間），解除安裝 App 即會全部刪除。登入 Google 帳號後，金鑰改存在你的帳號裡（加密），裝置上不保留明文。</p>
 
 <h2>App 會連線到哪裡</h2>
-<p>只有在你設定了自動讀取、並由 App 或小工具更新時，App 會用 HTTPS 直接連到你所選服務的官方網址查詢你自己帳戶的額度或餘額，例如：</p>
+<p>沒有登入時，只有在你設定了自動讀取、並由 App 或小工具更新時，App 會用 HTTPS 直接連到你所選服務的官方網址查詢你自己帳戶的額度或餘額，例如：</p>
 <ul>
 <li>api.openai.com（OpenAI）、api.anthropic.com（Anthropic）</li>
 <li>api.deepseek.com（DeepSeek）、management-api.x.ai（xAI）</li>
 <li>api.moonshot.ai／api.moonshot.cn（Moonshot Kimi）、openrouter.ai（OpenRouter）</li>
 <li>你自己填寫的自訂 JSON 網址</li>
 </ul>
-<p>App 的這些連線只會帶上你提供的金鑰，資料直接在你的裝置與該服務商之間傳送，不經過開發者；網頁版則由後端代為查詢。各服務商如何處理請求，請參考其各自的隱私權政策。</p>
+<p>App 的這些連線只會帶上你提供的金鑰，資料直接在你的裝置與該服務商之間傳送，不經過開發者；登入 Google 帳號後（含網頁版）則由後端代為查詢，App 只連到後端（script.google.com）與 Google 登入。各服務商如何處理請求，請參考其各自的隱私權政策。</p>
 
 <h2>不收集的資料</h2>
-<p>Android／iPhone App 不收集姓名、電子郵件、位置、聯絡人、相片、裝置識別碼、使用紀錄或任何其他個人資料。網頁版只保存上方「網頁版會保存什麼」列出的資料。兩者都不投放廣告。</p>
+<p>本服務不收集位置、聯絡人、相片、裝置識別碼、使用紀錄或任何其他個人資料。登入 Google 帳號後，只保存上方「登入 Google 帳號後會保存什麼」列出的資料。都不投放廣告。</p>
 
 <h2>兒童</h2>
 <p>本 App 不以 13 歲以下兒童為對象，也不會蓄意收集兒童的資料。</p>
