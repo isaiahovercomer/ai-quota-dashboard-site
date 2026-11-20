@@ -1,0 +1,17 @@
+{
+  "name": "AI額度即時儀表板",
+  "short_name": "AI額度",
+  "description": "把各家 AI 的使用額度、API 花費與餘額集中在一個畫面。",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F141E",
+  "theme_color": "#0F141E",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

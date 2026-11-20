@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AI額度即時儀表板</title>
+<meta name="description" content="把各家 AI 的使用額度、API 花費與餘額集中在一個畫面，任何裝置都能加到主畫面。">
+<meta name="theme-color" content="#0F141E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AI額度">
+<style>
+:root{--bg:#0F141E;--s:#1A2230;--s2:#232C3B;--stroke:#2E3A4F;--t:#E8ECF3;--sub:#9AA6B8;--a:#3DDC97;--o:#FFB547;--r:#FF5C7A;--gray:#AEB6C4;--blue:#9AA8FF}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--t);font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input{font:inherit}
+.wrap{max-width:760px;margin:0 auto;padding:14px 18px 40px}
+.hidden{display:none!important}
+.row{display:flex;align-items:center;gap:10px}
+.grow{flex:1;min-width:0}
+.label{font-size:13px;font-weight:700;color:var(--sub);letter-spacing:.04em}
+.sub{color:var(--sub);font-size:13px}
+.card{background:var(--s);border-radius:20px;padding:16px;margin-top:14px}
+.pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.13);color:var(--sub);white-space:nowrap}
+.pill.a{background:rgba(61,220,151,.12);color:var(--a)}
+.btn{display:flex;align-items:center;justify-content:center;min-height:50px;border-radius:14px;font-weight:600;font-size:15px;padding:0 16px;width:100%}
+.btn.primary{background:var(--a);color:var(--bg)}
+.btn.outline{border:1px solid var(--stroke)}
+.btn.danger{color:#FF8A9E}
+.btn.text{color:var(--a);min-height:40px;width:auto;padding:0 4px;justify-content:flex-start}
+.btn:disabled{opacity:.5}
+.icon-btn{width:48px;height:48px;border-radius:24px;background:var(--s2);display:grid;place-items:center;flex:none}
+.icon-btn svg{width:22px;height:22px}
+.spin svg{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* 卡片 */
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+@media(min-width:620px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.q{background:var(--s2);border-radius:18px;padding:12px 14px 14px;min-height:112px;display:flex;flex-direction:column;gap:7px;text-align:left;width:100%}
+.q .t{font-weight:700;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q .r1{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q .r2{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px}
+.empty{border:2px dashed var(--stroke);border-radius:18px;padding:22px 16px;text-align:center;color:var(--sub);margin-top:12px}
+/* 清單 */
+.svc{display:flex;align-items:center;gap:12px;padding:8px 2px}
+.chk{width:24px;height:24px;border-radius:6px;border:2px solid var(--sub);display:grid;place-items:center;flex:none}
+.chk.on{background:var(--a);border-color:var(--a)}
+.chk.on::after{content:"";width:6px;height:11px;border:solid var(--bg);border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.svc .nm{font-weight:700;font-size:15.5px}
+.svc .ds{font-size:12.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svc .ds.err{color:#FF8A9E}
+.chev{color:var(--sub);font-size:22px;line-height:1}
+/* 登入 */
+.login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;max-width:420px;margin:0 auto;padding:24px}
+.logo{width:88px;height:88px;border-radius:22px;margin-bottom:18px}
+h1{font-size:28px;margin:0}
+.field{margin-top:12px}
+.field label{display:block;font-size:12px;color:var(--sub);margin:0 0 4px 2px}
+.field input{width:100%;height:48px;border-radius:12px;border:1px solid #3A4760;background:rgba(15,20,30,.4);color:var(--t);padding:0 12px;outline:none}
+.field input:focus{border-color:var(--a)}
+.hint{font-size:12px;color:var(--sub);margin:4px 0 0 2px}
+.or{display:flex;align-items:center;gap:10px;color:var(--sub);font-size:13px;margin:22px 0 6px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--stroke)}
+/* 設定頁 */
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:10;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+.sheet .top{display:flex;align-items:center;gap:6px;padding:6px 16px 6px 6px}
+.sheet .body{flex:1;overflow:auto;padding:4px 16px 24px}
+.sheet .bottom{display:flex;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--s)}
+.opt{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:var(--s2);margin-top:8px;width:100%;text-align:left;border:2px solid transparent}
+.opt.on{background:rgba(61,220,151,.12);border-color:var(--a)}
+.dot{width:20px;height:20px;border-radius:10px;border:2px solid var(--sub);flex:none}
+.opt.on .dot{border:5px solid #1E4A3A;background:var(--a)}
+.opt b{display:block;font-size:15px}.opt span{font-size:12.5px;color:var(--sub)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--stroke);border-radius:12px;overflow:hidden;margin-top:12px}
+.seg button{min-height:42px;font-size:13.5px}
+.seg button.on{background:var(--s);color:var(--a);font-weight:700}
+.mrow{background:var(--s2);border-radius:14px;padding:12px 14px 14px;margin-top:12px}
+.callout{background:#161D29;border:1px solid var(--stroke);border-radius:14px;padding:12px 14px;color:var(--sub);font-size:13.5px;margin-top:14px;white-space:pre-wrap;word-break:break-word}
+.result{border-radius:14px;padding:12px 14px;margin-top:10px;font-size:14px}
+.result.ok{background:rgba(61,220,151,.12);border:1px solid var(--a)}
+.result.bad{background:rgba(255,92,122,.12);border:1px solid var(--r)}
+.switch{width:52px;height:32px;border-radius:16px;background:#3A4760;position:relative;flex:none;transition:.2s}
+.switch::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:12px;background:#fff;transition:.2s}
+.switch.on{background:var(--a)}.switch.on::after{left:24px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2B3547;color:var(--t);padding:12px 18px;border-radius:14px;z-index:20;max-width:90vw;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.code{font:700 28px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;color:var(--a);text-align:center;margin:10px 0 4px}
+a{color:var(--a)}
+</style>
+</head>
+<body>
+
+<!-- 登入 -->
+<section id="loginView" class="login hidden">
+  <img class="logo" src="icons/icon-192.png" alt="">
+  <h1>AI額度即時儀表板</h1>
+  <p class="sub" style="font-size:15px;margin:8px 0 26px">把各家 AI 的使用額度、API 花費與餘額集中在一個畫面。登入後，你的設定會在所有裝置同步，伺服器每 15 分鐘自動幫你更新。</p>
+  <div id="gsiBtn" style="min-height:44px"></div>
+  <p id="cfgMissing" class="callout hidden">網站尚未完成後端設定（Google 登入用戶端 ID 或後端網址），請稍後再試。</p>
+  <div class="or">或用連結碼登入</div>
+  <div class="field"><input id="pairInput" placeholder="例如 K7M2-X9PQ" autocomplete="one-time-code" autocapitalize="characters"></div>
+  <p class="hint">在已登入的裝置打開「帳號 → 在其他裝置登入」取得連結碼。加到主畫面後 Google 登入跳不出來時用這個。</p>
+  <button class="btn outline" style="margin-top:12px" onclick="redeemPair()">用連結碼登入</button>
+  <p class="sub" style="margin-top:26px;text-align:center"><a href="../privacy.html">隱私權政策</a> · <a href="../">支援</a></p>
+</section>
+
+<!-- 主畫面 -->
+<section id="appView" class="wrap hidden">
+  <div class="row" style="margin-top:6px">
+    <div class="grow">
+      <h1 style="font-size:26px">AI額度即時儀表板</h1>
+      <div id="status" class="sub"></div>
+    </div>
+    <button id="refreshBtn" class="icon-btn" aria-label="立即更新" onclick="refreshAll()">
+      <svg viewBox="0 0 24 24"><path fill="#7FD4C1" d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+    </button>
+  </div>
+
+  <div class="label" style="margin-top:22px">我的額度</div>
+  <div id="grid" class="grid"></div>
+  <div id="gridEmpty" class="empty hidden">還沒有勾選任何服務，從下面清單勾選要顯示的項目。</div>
+
+  <div class="card" style="margin-top:22px">
+    <div class="row"><b class="grow" style="font-size:16px">要顯示哪些服務</b><span id="count" class="pill a"></span></div>
+    <div class="sub" style="font-size:12.5px;margin:2px 0 6px">勾選的會出現在上方；點名稱可以設定資料來源。</div>
+    <div id="list"></div>
+  </div>
+
+  <div id="installCard" class="card hidden">
+    <div class="label">加到主畫面</div>
+    <p id="installText" style="margin:6px 0 0"></p>
+    <button id="installBtn" class="btn primary hidden" style="margin-top:12px" onclick="doInstall()">安裝到主畫面</button>
+  </div>
+
+  <div class="card">
+    <div class="label">帳號</div>
+    <div id="email" style="margin:6px 0 10px;font-weight:600"></div>
+    <button class="btn outline" onclick="makePair()">在其他裝置登入（產生連結碼）</button>
+    <div id="pairBox" class="hidden">
+      <div class="code" id="pairCode"></div>
+      <p class="hint" style="text-align:center">10 分鐘內在另一台裝置的登入畫面輸入，只能用一次。</p>
+    </div>
+    <div class="two" style="margin-top:10px">
+      <button class="btn outline" onclick="logout()">登出</button>
+      <button class="btn outline danger" onclick="deleteMe()">刪除我的資料</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">關於</div>
+    <p class="sub" style="font-size:13.5px;margin:6px 0 0">• 伺服器每 15 分鐘自動查詢一次，打開時看到的就是最新數字；按右上角 ↻ 可立即更新。<br>• 金鑰加密保存在後端，只用來向各家官方 API 查詢你自己的帳戶。超過 30 天沒打開會暫停自動更新。<br>• <a href="../privacy.html">隱私權政策</a> · <a href="../">支援</a></p>
+  </div>
+</section>
+
+<!-- 設定頁 -->
+<section id="sheet" class="sheet hidden">
+  <div class="top">
+    <button class="icon-btn" style="background:none" aria-label="返回" onclick="closeEdit()">
+      <svg viewBox="0 0 24 24"><path fill="#E8ECF3" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
+    <div class="grow"><b id="eTitle" style="font-size:19px"></b><div class="sub" style="font-size:12.5px">設定資料來源與顯示方式</div></div>
+  </div>
+  <div class="body" id="eBody"></div>
+  <div class="bottom">
+    <button class="btn outline" style="flex:1" onclick="saveEdit(false)">只儲存</button>
+    <button class="btn primary" style="flex:1.6" onclick="saveEdit(true)">儲存並測試</button>
+  </div>
+</section>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+// ===================== 設定 =====================
+const CONFIG = {
+  api: 'PASTE_APPS_SCRIPT_WEB_APP_URL',                       // 例如 https://script.google.com/macros/s/xxx/exec
+  clientId: '377002864625-2ao3us8jdfa1luak4djov1fpdtc6rbt2.apps.googleusercontent.com', // Google 登入用戶端 ID
+};
+const DEMO = new URLSearchParams(location.search).has('demo');
+const configured = !CONFIG.api.startsWith('PASTE') && !CONFIG.clientId.startsWith('PASTE');
+
+// ===================== 服務類型 =====================
+const TYPES = {
+  OPENAI_COST: { title: 'OpenAI API 花費', sub: '官方介面 · 金鑰貼一次永久有效', key: 'OpenAI Admin 金鑰（sk-admin-…）', page: 'https://platform.openai.com/settings/organization/admin-keys',
+    help: '到 platform.openai.com → Settings → Organization → Admin keys 建立 Admin 金鑰（一般 sk-proj 金鑰查不到花費）。顯示本月（UTC）累計花費。' },
+  ANTHROPIC_COST: { title: 'Claude API 花費', sub: '官方介面 · 金鑰貼一次永久有效', key: 'Anthropic Admin 金鑰（sk-ant-admin…）', page: 'https://console.anthropic.com/settings/admin-keys',
+    help: '到 Claude Console → Settings → Admin keys 建立 Admin 金鑰（需組織管理員）。顯示本月（UTC）API 花費，不是 Claude 訂閱用量。' },
+  DEEPSEEK_BALANCE: { title: 'DeepSeek API 餘額', sub: '官方介面 · 金鑰貼一次永久有效', key: 'DeepSeek API 金鑰（sk-…）', page: 'https://platform.deepseek.com/api_keys', bal: 1,
+    help: '到 platform.deepseek.com → API keys 建立金鑰。顯示 API 帳戶餘額；DeepSeek 聊天 App 是免費的，沒有額度可顯示。' },
+  XAI_BALANCE: { title: 'xAI／Grok API 餘額', sub: '官方介面 · Management 金鑰＋Team ID', key: 'xAI Management 金鑰', page: 'https://console.x.ai/team/default/management-keys', bal: 1,
+    help: '到 console.x.ai → Management keys 建立 Management 金鑰並填 Team ID。這是 API 預付餘額，不是 SuperGrok 訂閱額度（訂閱請用「手動輸入」）。' },
+  KIMI_BALANCE: { title: 'Kimi API 餘額', sub: '官方介面 · 金鑰貼一次永久有效', key: 'Kimi API 金鑰（sk-…）', page: 'https://platform.kimi.ai/console/api-keys', bal: 1,
+    help: '到 platform.kimi.ai（國際版）或 platform.moonshot.cn（中國版）建立 API 金鑰，兩個版本都會自動試。顯示 API 可用餘額。' },
+  OPENROUTER_CREDITS: { title: 'OpenRouter 剩餘額度', sub: '官方介面 · 金鑰貼一次永久有效', key: 'OpenRouter 金鑰（sk-or-…）', page: 'https://openrouter.ai/settings/keys', bal: 1,
+    help: '到 openrouter.ai → Settings → API Keys 建立金鑰。顯示剩餘額度（總儲值 − 已用）。' },
+  JSON_URL: { title: '自訂 JSON 網址', sub: '進階 · 讀你自己的網址',
+    help: '網址要回傳：{"rows":[{"label":"週","percent":84,"mode":"remaining","resetAt":"2026-11-24T18:00:00+08:00"}]}\nmode 可填 remaining 或 used；resetAt 可填 ISO 時間或 Unix 秒。花費型可回傳 {"amount":42.7,"budget":100}。' },
+  MANUAL: { title: '手動輸入', sub: '訂閱方案（ChatGPT、Gemini、Grok…）· 自動倒數',
+    help: 'ChatGPT、Gemini、Grok、Muse、Claude 訂閱等沒有公開的額度介面，只能手動填。設好重置週期後會自動倒數，到期自動回到滿額。' },
+};
+const NEEDS_KEY = ['OPENAI_COST', 'ANTHROPIC_COST', 'DEEPSEEK_BALANCE', 'XAI_BALANCE', 'KIMI_BALANCE', 'OPENROUTER_CREDITS'];
+const tagOf = (t) => t === 'MANUAL' ? '手動' : t === 'JSON_URL' ? '自訂' : '官方';
+
+// ===================== 卡片格式（與 Android／iOS 相同規則） =====================
+const C = { green: 'var(--a)', orange: 'var(--o)', red: 'var(--r)', gray: 'var(--gray)', white: 'var(--t)' };
+const toneOf = (rem) => rem >= 50 ? 'green' : rem >= 20 ? 'orange' : 'red';
+const pct = (p) => Math.abs(p - Math.round(p)) < 0.05 ? Math.round(p) + '%' : p.toFixed(1) + '%';
+const money = (v, s = '$') => s + v.toFixed(2);
+const short = (v) => Number.isInteger(v) ? String(v) : v.toFixed(2);
+function split(ms) { const m = Math.floor(ms / 60000); return [Math.floor(m / 1440), Math.floor((m % 1440) / 60), m % 60]; }
+function resetLong(at, now) {
+  if (!at) return ''; const d = at - now; if (d <= 0) return '已到重置時間';
+  const [D, H, M] = split(d); return D ? `${D}天${H}小時後重置` : H ? `${H}小時${M}分後重置` : `${Math.max(M, 1)}分鐘後重置`;
+}
+function resetShort(at, now) {
+  if (!at) return ''; const d = at - now; if (d <= 0) return '已重置';
+  const [D, H, M] = split(d); return D ? `${D}天${H}時` : H ? `${H}時${M}分` : `${Math.max(M, 1)}分`;
+}
+const remOf = (r) => r.remaining ? r.percent : 100 - r.percent;
+function compact(r, now) {
+  const base = `${r.label.trim()} ${r.remaining ? '' : '已用'}${pct(r.percent)}`.trim();
+  const cd = resetShort(r.resetAt, now); return cd ? `${base} · ${cd}` : base;
+}
+function nextMonthUTC(now) { const d = new Date(now); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1); }
+
+function buildCard(s, res, now = Date.now()) {
+  const name = s.n || TYPES[s.t].title;
+  const m = { title: name, tag: tagOf(s.t), row1: '尚未取得資料', c1: 'gray', bar: null, barTone: 'green', row2: '', c2: 'gray' };
+  if (!res) { m.row2 = (NEEDS_KEY.includes(s.t) && !s.hasKey) ? '點這裡設定金鑰' : '按 ↻ 立即更新'; return m; }
+  if (res.error) m.title = name + ' ⚠';
+  if (res.balance !== undefined && res.balance !== null) {
+    const sym = res.currency === 'CNY' ? '¥' : '$', base = res.budget || 0, bal = res.balance;
+    const c = res.available === false ? 'red' : base > 0 ? toneOf(bal / base * 100) : 'green';
+    Object.assign(m, { row1: '餘額 ' + money(bal, sym), c1: c, barTone: c, bar: base > 0 ? Math.min(100, Math.max(0, bal / base * 100)) : null,
+      row2: res.error || (res.available === false ? '餘額不足，API 已無法使用' : base > 0 ? `剩 ${pct(bal / base * 100)} · 滿 ${sym}${short(base)}` : 'API 可用'),
+      c2: (res.error || res.available === false) ? 'red' : 'gray' });
+    return m;
+  }
+  if (res.amount !== undefined && res.amount !== null) {
+    const b = res.budget || 0, me = resetShort(nextMonthUTC(now), now);
+    if (b > 0) { const used = res.amount / b * 100, c = toneOf(100 - used);
+      Object.assign(m, { row1: `${money(res.amount)} / ${money(b)}`, c1: 'white', bar: Math.min(100, Math.max(0, used)), barTone: c, row2: res.error || `本月 ${pct(used)} · ${me}`, c2: res.error ? 'red' : c });
+    } else Object.assign(m, { row1: '本月 ' + money(res.amount), c1: 'white', row2: res.error || `未設預算 · ${me}`, c2: res.error ? 'red' : 'gray' });
+    return m;
+  }
+  const rows = res.rows || [];
+  if (!rows.length) return Object.assign(m, { row1: res.error || '沒有資料', c1: 'red', row2: '點這裡檢查設定' });
+  const r1 = rows[0], c1 = toneOf(remOf(r1));
+  Object.assign(m, { c1, barTone: c1, bar: Math.min(100, Math.max(0, r1.percent)) });
+  if (rows.length === 1) {
+    m.row1 = r1.remaining ? `${r1.label.trim()}剩餘 ${pct(r1.percent)}` : `${r1.label.trim()} 已用 ${pct(r1.percent)}`.trim();
+    m.row2 = res.error || resetLong(r1.resetAt, now) || '—'; m.c2 = res.error ? 'red' : 'gray';
+  } else {
+    m.row1 = compact(r1, now); m.row2 = res.error || compact(rows[1], now); m.c2 = res.error ? 'red' : toneOf(remOf(rows[1]));
+  }
+  return m;
+}
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+function cardHTML(m, onclick) {
+  return `<button class="q" ${onclick ? `onclick="${onclick}"` : 'disabled style="cursor:default"'}>
+    <div class="row" style="gap:6px"><span class="t grow">${esc(m.title)}</span><span class="pill">${m.tag}</span></div>
+    <div class="r1" style="color:${C[m.c1]}">${esc(m.row1)}</div>
+    ${m.bar !== null ? `<div class="bar"><i style="width:${m.bar}%;background:${C[m.barTone]}"></i></div>` : ''}
+    <div class="r2" style="color:${C[m.c2]}">${esc(m.row2)}</div></button>`;
+}
+
+// ===================== 後端呼叫 =====================
+let S = null; // 目前狀態 {email, slots, results, lastRefresh}
+let session = localStorage.getItem('aq_session') || '';
+
+async function api(action, data = {}) {
+  if (DEMO) return demoApi(action, data);
+  const res = await fetch(CONFIG.api, { method: 'POST', body: JSON.stringify(Object.assign({ action, session }, data)) });
+  const j = await res.json();
+  if (!j.ok) {
+    if (j.error === 'SESSION_EXPIRED') { signOutLocal(); throw new Error('登入已過期，請重新登入'); }
+    throw new Error(friendlyErr(j.error));
+  }
+  return j;
+}
+const friendlyErr = (e) => ({ INVALID_TOKEN: 'Google 登入驗證失敗', PAIR_INVALID: '連結碼錯誤或已過期', EMAIL_NOT_VERIFIED: 'Google 帳號信箱尚未驗證', NOT_SETUP: '後端尚未完成設定' })[e] || e;
+
+function applyState(j) {
+  if (j.session) { session = j.session; localStorage.setItem('aq_session', session); }
+  S = { email: j.email, slots: j.slots, results: j.results || {}, lastRefresh: j.lastRefresh || 0 };
+  if (!DEMO) localStorage.setItem('aq_state', JSON.stringify(S));
+  render();
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.add('hidden'), 3200);
+}
+
+// ===================== 登入 =====================
+function showLogin() {
+  document.getElementById('appView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+  if (!configured && !DEMO) { document.getElementById('cfgMissing').classList.remove('hidden'); return; }
+  if (DEMO) { document.getElementById('gsiBtn').innerHTML = '<button class="btn primary" onclick="demoLogin()">示範：用 Google 登入</button>'; return; }
+  const init = () => {
+    google.accounts.id.initialize({ client_id: CONFIG.clientId, callback: onGoogle, auto_select: true, itp_support: true, use_fedcm_for_prompt: true });
+    google.accounts.id.renderButton(document.getElementById('gsiBtn'), { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', locale: 'zh-TW', width: 320 });
+    google.accounts.id.prompt();
+  };
+  if (window.google?.accounts) init();
+  else { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = init; document.head.appendChild(s); }
+}
+async function onGoogle(resp) {
+  try { applyState(await api('login', { idToken: resp.credential })); showApp(); }
+  catch (e) { toast(e.message); }
+}
+async function redeemPair() {
+  const code = document.getElementById('pairInput').value.trim();
+  if (!code) return toast('請輸入連結碼');
+  try { applyState(await api('pairRedeem', { code })); showApp(); }
+  catch (e) { toast(e.message); }
+}
+function signOutLocal() {
+  session = ''; S = null; localStorage.removeItem('aq_session'); localStorage.removeItem('aq_state');
+  window.google?.accounts?.id?.disableAutoSelect?.();
+  showLogin();
+}
+async function logout() { try { await api('logout'); } catch (_) {} signOutLocal(); }
+async function deleteMe() {
+  if (!confirm('確定要刪除你在這個服務的所有資料（設定、金鑰、查詢結果、登入狀態）嗎？無法復原。')) return;
+  try { await api('deleteMe'); toast('已刪除你的資料'); } catch (e) { toast(e.message); }
+  signOutLocal();
+}
+async function makePair() {
+  try { const j = await api('pairCreate'); document.getElementById('pairCode').textContent = j.code; document.getElementById('pairBox').classList.remove('hidden'); }
+  catch (e) { toast(e.message); }
+}
+
+// ===================== 主畫面 =====================
+function showApp() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('appView').classList.remove('hidden');
+  setupInstall();
+}
+let busy = false;
+function render() {
+  if (!S) return;
+  const now = Date.now();
+  const shown = S.slots.filter((s) => s.e);
+  document.getElementById('grid').innerHTML = shown.map((s) => cardHTML(buildCard(s, S.results[s.id], now), `openEdit(${s.id})`)).join('');
+  document.getElementById('gridEmpty').classList.toggle('hidden', shown.length > 0);
+  document.getElementById('count').textContent = `已選 ${shown.length}`;
+  document.getElementById('list').innerHTML = S.slots.map((s) => {
+    const r = S.results[s.id];
+    let detail = '';
+    if (r?.error) detail = '⚠ ' + r.error;
+    else if (r) detail = buildCard(s, r, now).row1;
+    else if (NEEDS_KEY.includes(s.t) && !s.hasKey) detail = '尚未設定金鑰';
+    return `<div class="svc">
+      <button class="chk ${s.e ? 'on' : ''}" aria-label="顯示 ${esc(s.n)}" onclick="toggle(${s.id})"></button>
+      <button class="grow row" style="text-align:left" onclick="openEdit(${s.id})">
+        <div class="grow"><div class="nm" style="color:${s.e ? 'var(--t)' : '#C4CBD6'}">${esc(s.n || TYPES[s.t].title)}</div>
+        <div class="ds ${r?.error ? 'err' : ''}">${esc(TYPES[s.t].title + (detail ? ' · ' + detail : ''))}</div></div>
+        <span class="chev">›</span></button></div>`;
+  }).join('');
+  const t = S.lastRefresh ? new Date(S.lastRefresh).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+  document.getElementById('status').textContent = busy ? '更新中…' : t ? `上次更新 ${t} · 每 15 分鐘自動更新` : '尚未更新 · 按右邊 ↻ 立即更新';
+  document.getElementById('email').textContent = S.email || '';
+}
+async function refreshAll() {
+  if (busy) return;
+  busy = true; document.getElementById('refreshBtn').classList.add('spin'); render();
+  try { applyState(await api('refresh')); } catch (e) { toast(e.message); }
+  busy = false; document.getElementById('refreshBtn').classList.remove('spin'); render();
+}
+async function toggle(id) {
+  const s = S.slots[id]; s.e = !s.e; render();
+  try {
+    applyState(await api('toggle', { id, on: s.e }));
+    if (s.e && !S.results[id] && s.t !== 'MANUAL') applyState(await api('refresh', { id }));
+  } catch (e) { toast(e.message); }
+}
+async function reloadState() { if (session || DEMO) try { applyState(await api('state')); } catch (_) {} }
+
+// ===================== 設定頁 =====================
+let E = null; // 編輯中的服務
+function openEdit(id) {
+  const s = S.slots[id];
+  E = JSON.parse(JSON.stringify(s));
+  E.key = ''; E.clearKey = false; E.result = null;
+  E.h1 = hoursLeft(s.m1.at); E.h2 = hoursLeft(s.m2.at); E.h1o = E.h1; E.h2o = E.h2;
+  document.getElementById('sheet').classList.remove('hidden');
+  drawEdit();
+}
+function closeEdit() { document.getElementById('sheet').classList.add('hidden'); E = null; }
+const hoursLeft = (at) => { const d = at - Date.now(); return d > 0 ? String(Math.round(d / 360000) / 10) : ''; };
+function upd(path, v) { const ks = path.split('.'); let o = E; while (ks.length > 1) o = o[ks.shift()]; o[ks[0]] = v; }
+
+function field(label, path, value, opts = {}) {
+  return `<div class="field"><label>${label}</label><input type="${opts.type || 'text'}" ${opts.mode ? `inputmode="${opts.mode}"` : ''}
+    value="${esc(value)}" placeholder="${esc(opts.ph || '')}" autocomplete="off" autocapitalize="off" spellcheck="false"
+    oninput="upd('${path}', this.value)">${opts.hint ? `<div class="hint">${opts.hint}</div>` : ''}</div>`;
+}
+function drawEdit() {
+  const t = E.t, T = TYPES[t];
+  document.getElementById('eTitle').textContent = E.n || '設定服務';
+  const preview = cardHTML(buildCard(S.slots[E.id], S.results[E.id]), null);
+  let h = `<div class="card row" style="margin-top:8px"><div class="grow"><b style="font-size:16px">顯示在主畫面上</b><div class="sub" style="font-size:12.5px">勾選後出現在「我的額度」</div></div>
+      <button class="switch ${E.e ? 'on' : ''}" aria-label="顯示" onclick="E.e=!E.e;drawEdit()"></button></div>
+    <div class="label" style="margin-top:16px">卡片預覽</div><div style="margin-top:8px">${preview}</div>
+    ${E.result ? `<div class="result ${E.result.ok ? 'ok' : 'bad'}">${esc(E.result.msg)}</div>` : ''}
+    <div class="card"><div class="label">資料來源</div>
+      ${Object.keys(TYPES).map((k) => `<button class="opt ${k === t ? 'on' : ''}" onclick="E.t='${k}';E.result=null;drawEdit()"><span class="dot"></span><div><b>${TYPES[k].title}</b><span>${TYPES[k].sub}</span></div></button>`).join('')}
+    </div>
+    <div class="card"><div class="label">顯示名稱</div>${field('名稱', 'n', E.n)}</div>`;
+  if (NEEDS_KEY.includes(t) || t === 'JSON_URL') {
+    h += `<div class="card"><div class="label">${t === 'JSON_URL' ? '網址' : '金鑰'}</div>`;
+    if (t === 'JSON_URL') h += field('JSON 網址', 'u', E.u, { mode: 'url', ph: 'https://…' });
+    const keyLabel = t === 'JSON_URL' ? 'Bearer token（選填）' : T.key;
+    h += field(keyLabel, 'key', '', { type: 'password', ph: E.hasKey && !E.clearKey ? `已設定 ${E.keyHint}，留空不變更` : '貼上金鑰' });
+    if (E.hasKey && !E.clearKey) h += `<button class="btn text" style="color:#FF8A9E" onclick="E.clearKey=true;drawEdit()">清除已儲存的金鑰</button>`;
+    if (t === 'XAI_BALANCE') h += field('Team ID', 'a', E.a, { hint: '在 console.x.ai 的 Settings 可以看到' });
+    if (t !== 'JSON_URL') h += field(T.bal ? '滿額基準（選填）' : '每月預算（美元）', 'b', E.b || '', { mode: 'decimal',
+      hint: t === 'OPENROUTER_CREDITS' ? '留空會自動用你的總儲值當滿額' : T.bal ? '例如你通常儲值多少，填了才有進度條' : '用來算進度條百分比' });
+    if (T.page) h += `<a class="btn text" href="${T.page}" target="_blank" rel="noopener">開啟建立金鑰的網頁 ↗</a>`;
+    h += '</div>';
+  }
+  if (t === 'MANUAL') {
+    h += `<div class="card"><div class="label">額度數字</div><div class="hint">照 App 裡看到的填。設了重置週期，到期會自動回到滿額並重新倒數。</div>`;
+    [['m1', 'h1', '第一條（大字＋進度條）'], ['m2', 'h2', '第二條（選填，名稱留空就不顯示）']].forEach(([m, hk, title]) => {
+      const r = E[m];
+      h += `<div class="mrow"><b>${title}</b>
+        <div class="two">${field('名稱（週／段）', m + '.l', r.l)}${field('百分比 %', m + '.p', r.p, { mode: 'decimal' })}</div>
+        <div class="seg"><button class="${r.r ? 'on' : ''}" onclick="E.${m}.r=true;drawEdit()">數字是「剩餘」</button><button class="${!r.r ? 'on' : ''}" onclick="E.${m}.r=false;drawEdit()">數字是「已用」</button></div>
+        <div class="two">${field('幾小時後重置', hk, E[hk], { mode: 'decimal', hint: '4天6小時＝102' })}${field('重置週期（小時）', m + '.per', r.per, { mode: 'decimal', hint: '每週 168，0＝不自動' })}</div></div>`;
+    });
+    h += '</div>';
+  }
+  h += `<div class="callout">${esc(T.help)}</div>`;
+  document.getElementById('eBody').innerHTML = h;
+}
+function rowOut(r, h, ho) {
+  const o = { l: String(r.l || ''), p: Math.min(100, Math.max(0, Number(r.p) || 0)), r: !!r.r, per: Math.max(0, Number(r.per) || 0), at: r.at };
+  if (String(h).trim() !== ho) { const n = parseFloat(h); o.at = n > 0 ? Date.now() + n * 3600000 : 0; }
+  return o;
+}
+async function saveEdit(test) {
+  const svc = { id: E.id, t: E.t, n: E.n, a: E.a, b: Number(E.b) || 0, u: E.u, e: E.e,
+    m1: rowOut(E.m1, E.h1, E.h1o), m2: rowOut(E.m2, E.h2, E.h2o) };
+  if (E.key.trim()) svc.key = E.key.trim(); else if (E.clearKey) svc.clearKey = true;
+  try {
+    applyState(await api('save', { service: svc }));
+    if (!test) return closeEdit();
+    if (E.t === 'MANUAL') { E.result = { ok: true, msg: '✅ 已儲存！上面就是顯示的樣子。' }; }
+    else {
+      E.result = { ok: true, msg: '測試中…' }; drawEdit();
+      applyState(await api('refresh', { id: E.id }));
+      const r = S.results[E.id];
+      E.result = r?.error ? { ok: false, msg: '❌ ' + r.error } : { ok: true, msg: '✅ 成功！上面就是顯示的樣子。' };
+    }
+    const keep = E.result; openEdit(E.id); E.result = keep; drawEdit();
+    document.getElementById('eBody').scrollTop = 0;
+  } catch (e) { toast(e.message); }
+}
+
+// ===================== 加到主畫面 =====================
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; setupInstall(); });
+function setupInstall() {
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const card = document.getElementById('installCard');
+  if (standalone) return card.classList.add('hidden');
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const text = document.getElementById('installText');
+  card.classList.remove('hidden');
+  if (deferredPrompt) { text.textContent = '安裝後就像 App 一樣從主畫面打開。'; document.getElementById('installBtn').classList.remove('hidden'); }
+  else if (ios) text.innerHTML = '在 Safari 點下方 <b>分享</b> 按鈕 → <b>加入主畫面</b>。<br><span class="sub">裝好後若 Google 登入跳不出來，回這裡用「在其他裝置登入」產生連結碼。</span>';
+  else text.textContent = '在瀏覽器選單選「安裝應用程式」或「加到主畫面」。';
+}
+async function doInstall() { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; document.getElementById('installBtn').classList.add('hidden'); }
+
+// ===================== 示範模式（?demo） =====================
+function demoState() {
+  const now = Date.now(), h = 3600000;
+  const mr = (l, p, r, per, at = 0) => ({ l, p, r, at, per });
+  const E0 = mr('', 100, true, 0);
+  const slots = [
+    ['MANUAL', 'ChatGPT', mr('週', 32, true, 168, now + 134 * h), mr('5h', 58, true, 5, now + 3 * h), 1],
+    ['MANUAL', 'Gemini', mr('週', 84, true, 168, now + 102 * h), mr('段', 42, true, 0, now + 2 * h), 1],
+    ['MANUAL', 'Grok', mr('每週', 96, false, 168, now + 142 * h), E0, 1],
+    ['OPENAI_COST', 'OpenAI API', E0, E0, 1, 100, 1],
+    ['MANUAL', 'Muse', mr('週', 63, true, 168, now + 50 * h), E0, 1],
+    ['DEEPSEEK_BALANCE', 'DeepSeek', E0, E0, 1, 200, 1],
+    ['MANUAL', 'Claude', mr('5h', 15, true, 5, now + h), mr('週', 55, true, 168, now + 80 * h), 1],
+    ['ANTHROPIC_COST', 'Claude API', E0, E0, 0, 100],
+    ['MANUAL', 'Copilot', mr('每日', 100, true, 24), E0, 0], ['MANUAL', 'Perplexity', mr('每日', 100, true, 24), E0, 0],
+    ['KIMI_BALANCE', 'Kimi', E0, E0, 0], ['OPENROUTER_CREDITS', 'OpenRouter', E0, E0, 1, 0, 1], ['XAI_BALANCE', 'xAI API', E0, E0, 0],
+    ['MANUAL', 'Mistral', mr('每日', 100, true, 24), E0, 0], ['MANUAL', '通義千問', mr('每日', 100, true, 24), E0, 0],
+    ['MANUAL', '豆包', mr('每日', 100, true, 24), E0, 0], ['MANUAL', '自訂 1', mr('週', 100, true, 168), E0, 0], ['MANUAL', '自訂 2', mr('週', 100, true, 168), E0, 0],
+  ].map((c, i) => ({ id: i, t: c[0], n: c[1], m1: c[2], m2: c[3], e: !!c[4], b: c[5] || 0, a: '', u: '', hasKey: !!c[6], keyHint: c[6] ? '…8f3a' : '' }));
+  const results = {};
+  slots.forEach((s) => { if (s.t === 'MANUAL') { const rows = [{ label: s.m1.l, percent: s.m1.p, remaining: s.m1.r, resetAt: s.m1.at }]; if (s.m2.l) rows.push({ label: s.m2.l, percent: s.m2.p, remaining: s.m2.r, resetAt: s.m2.at }); results[s.id] = { rows }; } });
+  results[3] = { amount: 42.7, budget: 100 }; results[5] = { balance: 110, currency: 'CNY', budget: 200, available: true };
+  results[11] = { balance: 74.75, budget: 100.5, available: true };
+  return { ok: true, email: 'demo@gmail.com', slots, results, lastRefresh: now };
+}
+let demoS = null;
+async function demoApi(action, d) {
+  demoS = demoS || demoState();
+  if (action === 'toggle') demoS.slots[d.id].e = d.on;
+  if (action === 'save') Object.assign(demoS.slots[d.service.id], d.service, d.service.key ? { hasKey: true, keyHint: '…' + d.service.key.slice(-4) } : {});
+  if (action === 'pairCreate') return { ok: true, code: 'K7M2-X9PQ' };
+  if (action === 'refresh') demoS.lastRefresh = Date.now();
+  return JSON.parse(JSON.stringify(demoS));
+}
+function demoLogin() { applyState({ ok: true, ...demoState() }); showApp(); }
+
+// ===================== 啟動 =====================
+(function start() {
+  if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('sw.js').catch(() => {});
+  const p = new URLSearchParams(location.search);
+  if (DEMO) {
+    if (p.get('demo') === 'login') return showLogin();
+    demoLogin();
+    const id = p.get('edit'); if (id !== null) openEdit(Number(id));
+    return;
+  }
+  if (!session) return showLogin();
+  const cached = localStorage.getItem('aq_state');
+  if (cached) { S = JSON.parse(cached); render(); }
+  showApp();
+  reloadState();
+  setInterval(() => { if (!document.hidden) reloadState(); }, 5 * 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) reloadState(); });
+  setInterval(render, 60000); // 倒數每分鐘更新
+})();
+</script>
+</body>
+</html>
