@@ -1,0 +1,6 @@
+:root{--bg:#0F141E;--s:#1A2230;--t:#E8ECF3;--sub:#9AA6B8;--a:#3DDC97}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:16px/1.75 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+main{max-width:720px;margin:0 auto;padding:40px 20px 64px}
+header{display:flex;gap:16px;align-items:center;margin-bottom:28px}header img{width:64px;height:64px;border-radius:16px}
+h1{font-size:28px;margin:0}h2{font-size:19px;margin:32px 0 8px;color:var(--a)}p,li{color:#C9D1DD}
+.card{background:var(--s);border-radius:18px;padding:18px 20px;margin:16px 0}a{color:var(--a)}small{color:var(--sub)}
